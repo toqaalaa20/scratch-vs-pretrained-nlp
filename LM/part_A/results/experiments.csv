@@ -1,2 +1,4 @@
-name,phase,status,learning_rate,d_model,n_heads,num_layers,ff_dim,dropout,weight_tying,test_ppl,dev_ppl,notes,timestamp
-Baseline lr=1e-3,0,pass,0.001,20,1,1,20,0.0,False,44.72446460462423,51.47578817694353,,2026-05-17 00:18:59
+name,phase,status,learning_rate,d_model,n_heads,num_layers,ff_dim,dropout,weight_tying,test_ppl,dev_ppl,train_ppl,notes,timestamp
+"Baseline lr=1e-3",0,pass,0.001,20,1,1,20,0.0,False,44.72446460462423,51.47578817694353,38.75573621384463,,2026-05-17 00:18:59
+"Hyperparameter Tuning, d_model=64, lr=5e-4",1,pass,0.0005,64,1,1,20,0.0,False,40.65353338654486,46.282757678526195,24.985051169298206,,2026-05-17 09:29:14
+"Hyperparameter Tuning, d_model=64,ff_dim=256, lr=5e-4",1,pass,0.0005,64,1,1,256,0.0,False,40.023802684873445,45.481300949611466,25.581805356697018,,2026-05-17 10:50:10
