@@ -16,7 +16,7 @@ import tqdm
 import os
 import time
 
-def run_experiment(exp_name, phase, lr, d_model, n_heads, num_layers, ff_dim, dropout=0.0, n_epochs=100):
+def run_experiment(exp_name, phase, lr, d_model, n_heads, num_layers, ff_dim, dropout=0.0, weight_tying=False, n_epochs=100):
     # --- Reporting: Start Header ---
     print("\n" + "="*50)
     print(f"STARTING EXPERIMENT: {exp_name}")
@@ -66,6 +66,7 @@ def run_experiment(exp_name, phase, lr, d_model, n_heads, num_layers, ff_dim, dr
     sampled_epochs = []
     best_ppl = math.inf
     best_model = None
+    best_train_ppl = None
     
     print("\nStarting Training Loop...")
     pbar = tqdm.tqdm(range(n_epochs), desc="Epoch", unit="epoch", dynamic_ncols=True)
@@ -90,6 +91,7 @@ def run_experiment(exp_name, phase, lr, d_model, n_heads, num_layers, ff_dim, dr
             status = "New Best!"
             best_ppl = ppl_dev
             best_model = copy.deepcopy(model).to('cpu')
+            best_train_ppl = ppl_train
             patience_counter = 3
         else:
             patience_counter -= 1
@@ -118,18 +120,25 @@ def run_experiment(exp_name, phase, lr, d_model, n_heads, num_layers, ff_dim, dr
     torch.save(model.state_dict(), f'bin/{exp_name}/last_model.pt')
 
     # Tracker logging
-    tracker = ExperimentTracker("results")
+    tracker = ExperimentTracker("LM/part_A/results")
     tracker.log(
         name=exp_name,
         phase=phase,
         learning_rate=lr,
         test_ppl=final_ppl,
         dev_ppl=best_ppl,
+        train_ppl=best_train_ppl,
         sampled_epochs=sampled_epochs,
         losses_train=losses_train,
         losses_dev=losses_dev,
         ppls_train=ppls_train,
         ppls_dev=ppls_dev,
+        d_model=d_model,
+        n_heads=n_heads,
+        num_layers=num_layers,
+        ff_dim=ff_dim,
+        dropout=dropout,
+        weight_tying=weight_tying
     )
 
     # --- Reporting: Final Results Block ---
@@ -146,16 +155,16 @@ def run_experiment(exp_name, phase, lr, d_model, n_heads, num_layers, ff_dim, dr
     tracker.export_csv()
 
 if __name__ == "__main__":
-    # Write the code to load the datasets and to run your functions
-    # Print the results
+
     run_experiment(
-        exp_name="Hyperparameter Tuning, d_model=64, lr=5e-4",
-        phase=0,
+        exp_name="Hyperparameter Tuning, d_model=64,ff_dim=256, n_heads=4, lr=5e-4",
+        phase=1,
         lr=5e-4,
         d_model=64,
-        n_heads=1,
+        n_heads=4,
         num_layers=1,
-        ff_dim=20,
+        ff_dim=256,
+        weight_tying=False,
         dropout=0.0,
         n_epochs=100
     )

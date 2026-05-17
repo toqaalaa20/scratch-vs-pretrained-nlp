@@ -32,6 +32,7 @@ class Experiment:
     weight_tying: bool = False
     test_ppl: Optional[float] = None
     dev_ppl: Optional[float]  = None
+    train_ppl: Optional[float] = None
     notes: str         = ""
     timestamp: str     = field(default_factory=lambda: datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
     epoch_logs: list   = field(default_factory=list)
@@ -47,7 +48,7 @@ PHASE_NAMES = {0: "Baseline LR", 1: "Hyperparam opt", 2: "Dropout", 3: "Weight t
 
 
 class ExperimentTracker:
-    def __init__(self, save_dir: str = "results"):
+    def __init__(self, save_dir: str = "LM/part_A/results"):
         self.save_dir = save_dir
         self.experiments: list[Experiment] = []
         os.makedirs(save_dir, exist_ok=True)
@@ -62,6 +63,7 @@ class ExperimentTracker:
         learning_rate: float,
         test_ppl: float,
         dev_ppl: float       = None,
+        train_ppl: float     = None,
         # training curves — pass the lists your loop already built
         sampled_epochs: list = None,
         losses_train: list   = None,
@@ -85,7 +87,7 @@ class ExperimentTracker:
             ff_dim=ff_dim if ff_dim is not None else 2048,
             dropout=dropout if dropout is not None else 0.0,
             weight_tying=weight_tying if weight_tying is not None else False,
-            test_ppl=test_ppl, dev_ppl=dev_ppl, notes=notes,
+            test_ppl=test_ppl, dev_ppl=dev_ppl, train_ppl=train_ppl, notes=notes,
         )
 
         if sampled_epochs and losses_train and losses_dev:
@@ -101,7 +103,8 @@ class ExperimentTracker:
         self.experiments.append(exp)
         self._save()
         dev_ppl_str = f"{dev_ppl:.2f}" if dev_ppl else "—"
-        print(f"[Tracker] '{name}'  phase={phase} ({PHASE_NAMES.get(phase,'?')})  test PPL={test_ppl:.2f}  dev PPL={dev_ppl_str}  [{exp.status}]")
+        train_ppl_str = f"{train_ppl:.2f}" if train_ppl else "—"
+        print(f"[Tracker] '{name}'  phase={phase} ({PHASE_NAMES.get(phase,'?')})  test PPL={test_ppl:.2f}  dev PPL={dev_ppl_str}  train PPL={train_ppl_str}  [{exp.status}]")
         return exp
 
     # ── persistence ───────────────────────────────────────────────────────────
@@ -128,7 +131,7 @@ class ExperimentTracker:
     def export_csv(self):
         path = os.path.join(self.save_dir, "experiments.csv")
         fields = ["name", "phase", "status", "learning_rate", "d_model", "n_heads",
-                  "num_layers", "ff_dim", "dropout", "weight_tying", "test_ppl", "dev_ppl", "notes", "timestamp"]
+                  "num_layers", "ff_dim", "dropout", "weight_tying", "test_ppl", "dev_ppl", "train_ppl", "notes", "timestamp"]
         with open(path, "w", newline="") as f:
             w = csv.DictWriter(f, fieldnames=fields)
             w.writeheader()
