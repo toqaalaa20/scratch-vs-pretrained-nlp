@@ -1,0 +1,2 @@
+name,phase,status,learning_rate,d_model,n_heads,num_layers,ff_dim,dropout,weight_tying,test_ppl,dev_ppl,notes,timestamp
+Baseline lr=1e-3,0,pass,0.001,20,1,1,20,0.0,False,44.72446460462423,51.47578817694353,,2026-05-17 00:18:59
