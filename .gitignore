@@ -1,0 +1,16 @@
+dataset/
+bin/
+results/
+
+
+# cache
+__pycache__/
+*.pyc
+*.pkl
+*.h5
+*.ckpt
+*.log
+*.tmp
+*.cache
+*.ipynb_checkpoints
+
