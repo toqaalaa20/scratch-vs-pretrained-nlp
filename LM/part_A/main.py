@@ -50,6 +50,7 @@ def run_experiment(exp_name, phase, lr, d_model, n_heads, num_layers, ff_dim, dr
         n_heads=n_heads,
         num_layers=num_layers,
         ff_dim=ff_dim,
+        dropout=dropout,
     ).to(DEVICE)
 
     model.apply(init_weights)
@@ -173,15 +174,29 @@ if __name__ == "__main__":
         # )
 
     # --- Step 1: Hyperparameter optimization (num_layers sweep, staged previously) ---
+    # run_experiment(
+    #     exp_name="Hyperparameter Tuning, d_model=64,ff_dim=256, n_heads=4,num_layers=2, lr=4e-4",
+    #     phase=1,
+    #     lr=4e-4,
+    #     d_model=64,
+    #     n_heads=4,
+    #     num_layers=2,
+    #     ff_dim=256,
+    #     weight_tying=False,
+    #     dropout=0.0,
+    #     n_epochs=100
+    # )
+
+    # --- Step 2: Dropout (added at embeddings, post-softmax attention, attn out-proj, FFN output) ---
     run_experiment(
-        exp_name="Hyperparameter Tuning, d_model=64,ff_dim=256, n_heads=4,num_layers=2, lr=4e-4",
-        phase=1,
+        exp_name="Dropout, d_model=64,ff_dim=256, n_heads=4,num_layers=2, lr=4e-4, dropout=0.1",
+        phase=2,
         lr=4e-4,
         d_model=64,
         n_heads=4,
         num_layers=2,
         ff_dim=256,
         weight_tying=False,
-        dropout=0.0,
+        dropout=0.1,
         n_epochs=100
     )

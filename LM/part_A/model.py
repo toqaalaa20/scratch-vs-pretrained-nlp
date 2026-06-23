@@ -26,6 +26,8 @@ class MultiHeadAttention(nn.Module):
         self.w_v = nn.Linear(d_model, d_model)
 
         self.out_proj = nn.Linear(d_model, d_model)
+        self.attn_dropout = nn.Dropout(dropout)
+        self.proj_dropout = nn.Dropout(dropout)
 
     def forward(self, x, mask):
         # batch size B, sequence length L, d_model
@@ -51,12 +53,14 @@ class MultiHeadAttention(nn.Module):
         similarity = similarity.masked_fill(mask == 0, float('-inf'))
 
         attn = F.softmax(similarity, dim=-1)
+        attn = self.attn_dropout(attn)
 
         y = attn @ v  # (B, n_heads, L, L) * (B, n_heads, L, h_dim) -> (B, n_heads, L, h_dim)
         y = y.transpose(1, 2) # (B, L, n_heads, h_dim)
         # concatenate outputs of each head (contiguous is necessary to use view())
         y = y.contiguous().view(B, L, d_model) # (B, L, d_model)
         y = self.out_proj(y)
+        y = self.proj_dropout(y)
 
         return y
     
@@ -67,6 +71,7 @@ class FeedForward(nn.Module):
             nn.Linear(d_model, hidden_dim),
             nn.GELU(),
             nn.Linear(hidden_dim, d_model),
+            nn.Dropout(dropout),
         )
 
     def forward(self, x):
@@ -107,6 +112,7 @@ class GPT2(nn.Module):
         self.token_embed = nn.Embedding(vocab_size, d_model)
         # learnable positional embeddings
         self.pos_embed = nn.Embedding(pos_emb_size, d_model)
+        self.emb_dropout = nn.Dropout(dropout)
 
         self.blocks = nn.ModuleList([
             TransformerBlock(d_model, n_heads, ff_dim, dropout)
@@ -130,7 +136,7 @@ class GPT2(nn.Module):
         assert L <= self.pos_emb_size
 
         pos = torch.arange(L, device=idx.device)
-        x = self.token_embed(idx) + self.pos_embed(pos)
+        x = self.emb_dropout(self.token_embed(idx) + self.pos_embed(pos))
 
         mask = self.mask[:, :, :L, :L]
 
