@@ -156,16 +156,32 @@ def run_experiment(exp_name, phase, lr, d_model, n_heads, num_layers, ff_dim, dr
 
 if __name__ == "__main__":
 
-    run_experiment(
-        exp_name="Hyperparameter Tuning, d_model=64,ff_dim=256, n_heads=4, lr=5e-4",
-        phase=1,
-        lr=5e-4,
-        d_model=64,
-        n_heads=4,
-        num_layers=1,
-        ff_dim=256,
-        weight_tying=False,
-        dropout=0.0,
-        n_epochs=100
-    )
-    
+    # --- Step 0: Baseline LR search (architecture fixed at d_model=20, n_heads=1, num_layers=1, ff_dim=20) ---
+    # lr=1e-3 already run and logged ("Baseline lr=1e-3", dev PPL 51.48). Remaining candidates:
+    for lr in [3e-4, 1e-4, 5e-5]:
+        run_experiment(
+            exp_name=f"Baseline lr={lr}",
+            phase=0,
+            lr=lr,
+            d_model=20,
+            n_heads=1,
+            num_layers=1,
+            ff_dim=20,
+            weight_tying=False,
+            dropout=0.0,
+            n_epochs=100
+        )
+
+    # --- Step 1: Hyperparameter optimization (num_layers sweep, staged previously) ---
+    # run_experiment(
+    #     exp_name="Hyperparameter Tuning, d_model=64,ff_dim=256, n_heads=4,num_layers=2, lr=1e-4",
+    #     phase=1,
+    #     lr=1e-4,
+    #     d_model=64,
+    #     n_heads=4,
+    #     num_layers=2,
+    #     ff_dim=256,
+    #     weight_tying=False,
+    #     dropout=0.0,
+    #     n_epochs=100
+    # )
