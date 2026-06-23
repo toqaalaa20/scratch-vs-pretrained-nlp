@@ -51,6 +51,7 @@ def run_experiment(exp_name, phase, lr, d_model, n_heads, num_layers, ff_dim, dr
         num_layers=num_layers,
         ff_dim=ff_dim,
         dropout=dropout,
+        weight_tying=weight_tying,
     ).to(DEVICE)
 
     model.apply(init_weights)
@@ -188,15 +189,29 @@ if __name__ == "__main__":
     # )
 
     # --- Step 2: Dropout (added at embeddings, post-softmax attention, attn out-proj, FFN output) ---
+    # run_experiment(
+    #     exp_name="Dropout, d_model=64,ff_dim=256, n_heads=4,num_layers=2, lr=4e-4, dropout=0.1",
+    #     phase=2,
+    #     lr=4e-4,
+    #     d_model=64,
+    #     n_heads=4,
+    #     num_layers=2,
+    #     ff_dim=256,
+    #     weight_tying=False,
+    #     dropout=0.1,
+    #     n_epochs=100
+    # )
+
+    # --- Step 3: Weight tying (lm_head.weight = token_embed.weight) ---
     run_experiment(
-        exp_name="Dropout, d_model=64,ff_dim=256, n_heads=4,num_layers=2, lr=4e-4, dropout=0.1",
-        phase=2,
+        exp_name="Weight Tying, d_model=64,ff_dim=256, n_heads=4,num_layers=2, lr=4e-4, dropout=0.1",
+        phase=3,
         lr=4e-4,
         d_model=64,
         n_heads=4,
         num_layers=2,
         ff_dim=256,
-        weight_tying=False,
+        weight_tying=True,
         dropout=0.1,
         n_epochs=100
     )

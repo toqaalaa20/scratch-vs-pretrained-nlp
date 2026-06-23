@@ -104,6 +104,7 @@ class GPT2(nn.Module):
         num_layers=12,
         ff_dim=3072,
         dropout=0.1,
+        weight_tying=False,
     ):
         super().__init__()
         self.pos_emb_size = pos_emb_size
@@ -122,6 +123,9 @@ class GPT2(nn.Module):
         self.ln_f = nn.LayerNorm(d_model)
         # output layer
         self.lm_head = nn.Linear(d_model, vocab_size)
+
+        if weight_tying:
+            self.lm_head.weight = self.token_embed.weight
 
         # triangular matrix: (sub)token i will only be able to attend (sub)tokens j, 0 <= j <= i
         mask = torch.tril(torch.ones(pos_emb_size, pos_emb_size)).unsqueeze(0).unsqueeze(0)
