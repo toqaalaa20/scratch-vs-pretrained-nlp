@@ -1,0 +1,2 @@
+name,status,rank,alpha,learning_rate,test_ppl,dev_ppl,train_ppl,notes,timestamp
+LoRA rank=8 alpha=16 lr=1e-3,pass,8,16,0.001,20.566122075519154,22.762022334615935,23.684614920462916,,2026-06-26 11:03:48
