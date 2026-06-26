@@ -38,6 +38,7 @@ def run_experiment(
     eval_batch_size=64,
     n_epochs=200,
     patience=3,
+    runs=5,
 ):
     print("\n" + "=" * 50)
     print(f"STARTING EXPERIMENT: {exp_name}")
@@ -128,81 +129,116 @@ def run_experiment(
 
     print(f"Using device: {DEVICE}")
 
-    model = GPT2(
-        vocab_len,
-        slots_len,
-        n_intents,
-        pos_emb_size=pos_emb_size,
-        d_model=d_model,
-        n_heads=n_heads,
-        num_layers=num_layers,
-        ff_dim=ff_dim,
-        dropout=dropout,
-    ).to(DEVICE)
-    model.apply(init_weights)
+    test_f1s = []
+    test_accs = []
+    dev_f1s = []
+    dev_accs = []
+    # Curves from the last run are kept for plotting (representative of the others)
+    last_run_curves = None
+    last_best_model = None
+    last_model = None
 
-    optimizer = optim.AdamW(model.parameters(), lr=lr)
-    criterion_slots = nn.CrossEntropyLoss(ignore_index=PAD_TOKEN)
-    criterion_intents = nn.CrossEntropyLoss()  # No pad tokens, all sequences have a single label for intent
+    for run in range(runs):
+        print(f"\n--- Run {run + 1}/{runs} ---")
 
-    patience_counter = patience
-    losses_train = []
-    losses_dev = []
-    dev_slot_f1s = []
-    dev_intent_accs = []
-    sampled_epochs = []
-    best_f1 = 0
-    best_intent_acc = 0
-    best_model = None
+        model = GPT2(
+            vocab_len,
+            slots_len,
+            n_intents,
+            pos_emb_size=pos_emb_size,
+            d_model=d_model,
+            n_heads=n_heads,
+            num_layers=num_layers,
+            ff_dim=ff_dim,
+            dropout=dropout,
+        ).to(DEVICE)
+        model.apply(init_weights)
 
-    print("\nStarting Training Loop...")
-    pbar = tqdm(range(n_epochs))
-    for i in pbar:
-        loss = train_loop(train_loader, optimizer, criterion_slots,
-                           criterion_intents, model)
-        sampled_epochs.append(i)
-        losses_train.append(np.asarray(loss).mean())
-        results_dev, intent_res, loss_dev = eval_loop(dev_loader, criterion_slots,
-                                                       criterion_intents, model, lang)
+        optimizer = optim.AdamW(model.parameters(), lr=lr)
+        criterion_slots = nn.CrossEntropyLoss(ignore_index=PAD_TOKEN)
+        criterion_intents = nn.CrossEntropyLoss()  # No pad tokens, all sequences have a single label for intent
 
-        f1 = results_dev['total']['f']
-        intent_acc = intent_res['accuracy']
-        losses_dev.append(np.asarray(loss_dev).mean())
-        dev_slot_f1s.append(f1)
-        dev_intent_accs.append(intent_acc)
+        patience_counter = patience
+        losses_train = []
+        losses_dev = []
+        dev_slot_f1s = []
+        dev_intent_accs = []
+        sampled_epochs = []
+        best_f1 = 0
+        best_intent_acc = 0
+        best_model = None
 
-        pbar.set_description(f"Slot F1: {f1:.2f}; Intent Acc: {intent_acc:.2f}")
+        pbar = tqdm(range(n_epochs))
+        for i in pbar:
+            loss = train_loop(train_loader, optimizer, criterion_slots,
+                               criterion_intents, model)
+            sampled_epochs.append(i)
+            losses_train.append(np.asarray(loss).mean())
+            results_dev, intent_res, loss_dev = eval_loop(dev_loader, criterion_slots,
+                                                           criterion_intents, model, lang)
 
-        # For decreasing the patience you can also use the average between slot f1 and intent accuracy
-        if f1 > best_f1:
-            best_f1 = f1
-            best_intent_acc = intent_acc
-            best_model = copy.deepcopy(model).to('cpu')
-            patience_counter = patience
-        else:
-            patience_counter -= 1
-        if patience_counter <= 0:  # Early stopping with patience
-            print(f"\nEarly stopping triggered at epoch {i}")
-            break
+            f1 = results_dev['total']['f']
+            intent_acc = intent_res['accuracy']
+            losses_dev.append(np.asarray(loss_dev).mean())
+            dev_slot_f1s.append(f1)
+            dev_intent_accs.append(intent_acc)
+
+            pbar.set_description(f"Slot F1: {f1:.2f}; Intent Acc: {intent_acc:.2f}")
+
+            # For decreasing the patience you can also use the average between slot f1 and intent accuracy
+            if f1 > best_f1:
+                best_f1 = f1
+                best_intent_acc = intent_acc
+                best_model = copy.deepcopy(model).to('cpu')
+                patience_counter = patience
+            else:
+                patience_counter -= 1
+            if patience_counter <= 0:  # Early stopping with patience
+                print(f"\nEarly stopping triggered at epoch {i}")
+                break
+
+        if best_model is None:
+            best_model = copy.deepcopy(model)
+        best_model.to(DEVICE)
+
+        results_test, intent_test, _ = eval_loop(test_loader, criterion_slots,
+                                                  criterion_intents, best_model, lang)
+        test_f1 = results_test['total']['f']
+        test_acc = intent_test['accuracy']
+        print(f"Run {run + 1} -- Slot F1: {test_f1:.4f}  Intent Acc: {test_acc:.4f}")
+
+        test_f1s.append(test_f1)
+        test_accs.append(test_acc)
+        dev_f1s.append(best_f1)
+        dev_accs.append(best_intent_acc)
+
+        last_run_curves = dict(
+            sampled_epochs=sampled_epochs,
+            losses_train=losses_train,
+            losses_dev=losses_dev,
+            dev_slot_f1s=dev_slot_f1s,
+            dev_intent_accs=dev_intent_accs,
+        )
+        last_best_model = best_model
+        last_model = model
 
     print("\n" + "-" * 30)
     print("Finalizing Experiment...")
 
-    if best_model is None:
-        best_model = copy.deepcopy(model)
-    best_model.to(DEVICE)
+    test_f1s = np.asarray(test_f1s)
+    test_accs = np.asarray(test_accs)
+    test_f1_mean, test_f1_std = test_f1s.mean(), test_f1s.std()
+    test_acc_mean, test_acc_std = test_accs.mean(), test_accs.std()
+    dev_f1_mean = float(np.mean(dev_f1s))
+    dev_acc_mean = float(np.mean(dev_accs))
 
-    results_test, intent_test, _ = eval_loop(test_loader, criterion_slots,
-                                              criterion_intents, best_model, lang)
-    test_f1 = results_test['total']['f']
-    test_acc = intent_test['accuracy']
-    print('Slot F1: ', test_f1)
-    print('Intent Accuracy:', test_acc)
+    print(f"Slot F1: {test_f1_mean:.3f} +- {test_f1_std:.3f}")
+    print(f"Intent Acc: {test_acc_mean:.3f} +- {test_acc_std:.3f}")
 
-    # Saving
+    # Saving (models from the last run)
     os.makedirs(f"bin/{exp_name}", exist_ok=True)
-    torch.save(best_model.state_dict(), f"bin/{exp_name}/best_model.pt")
-    torch.save(model.state_dict(), f"bin/{exp_name}/last_model.pt")
+    torch.save(last_best_model.state_dict(), f"bin/{exp_name}/best_model.pt")
+    torch.save(last_model.state_dict(), f"bin/{exp_name}/last_model.pt")
 
     # Tracker logging
     tracker = ExperimentTracker("NLU/part_A/results")
@@ -210,15 +246,17 @@ def run_experiment(
         name=exp_name,
         phase=phase,
         learning_rate=lr,
-        test_slot_f1=test_f1,
-        test_intent_acc=test_acc,
-        dev_slot_f1=best_f1,
-        dev_intent_acc=best_intent_acc,
-        sampled_epochs=sampled_epochs,
-        losses_train=losses_train,
-        losses_dev=losses_dev,
-        dev_slot_f1s=dev_slot_f1s,
-        dev_intent_accs=dev_intent_accs,
+        test_slot_f1=test_f1_mean,
+        test_slot_f1_std=test_f1_std,
+        test_intent_acc=test_acc_mean,
+        test_intent_acc_std=test_acc_std,
+        dev_slot_f1=dev_f1_mean,
+        dev_intent_acc=dev_acc_mean,
+        sampled_epochs=last_run_curves['sampled_epochs'],
+        losses_train=last_run_curves['losses_train'],
+        losses_dev=last_run_curves['losses_dev'],
+        dev_slot_f1s=last_run_curves['dev_slot_f1s'],
+        dev_intent_accs=last_run_curves['dev_intent_accs'],
         d_model=d_model,
         n_heads=n_heads,
         num_layers=num_layers,
@@ -228,8 +266,8 @@ def run_experiment(
 
     print("\n" + "=" * 50)
     print(f"EXPERIMENT COMPLETE: {exp_name}")
-    print(f"Best Dev Slot F1: {best_f1:.4f}  |  Best Dev Intent Acc: {best_intent_acc:.4f}")
-    print(f"Test Slot F1: {test_f1:.4f}  |  Test Intent Acc: {test_acc:.4f}")
+    print(f"Dev Slot F1 (avg): {dev_f1_mean:.4f}  |  Dev Intent Acc (avg): {dev_acc_mean:.4f}")
+    print(f"Test Slot F1: {test_f1_mean:.4f} +- {test_f1_std:.4f}  |  Test Intent Acc: {test_acc_mean:.4f} +- {test_acc_std:.4f}")
     print(f"Models saved in: bin/{exp_name}/")
     print("=" * 50 + "\n")
 
@@ -256,13 +294,13 @@ if __name__ == "__main__":
 
     # --- Step 1: Hyperparameter optimization (change d_model, n_heads, num_layers, ff_dim one at a time) ---
     # run_experiment(
-    #     exp_name="Hyperparameter Tuning, d_model=64,ff_dim=256,n_heads=4,num_layers=2, lr=4e-4",
+    #     exp_name="Hyperparameter Tuning, d_model=64, num_layers=2, lr=1e-3",
     #     phase=1,
-    #     lr=4e-4,
+    #     lr=1e-3,
     #     d_model=64,
-    #     n_heads=4,
+    #     n_heads=1,
     #     num_layers=2,
-    #     ff_dim=256,
+    #     ff_dim=20,
     #     dropout=0.0,
     #     n_epochs=200,
     # )

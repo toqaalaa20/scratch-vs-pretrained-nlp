@@ -27,7 +27,9 @@ class Experiment:
     ff_dim: int         = 20
     dropout: float      = 0.0
     test_slot_f1: Optional[float]    = None
+    test_slot_f1_std: Optional[float]     = None
     test_intent_acc: Optional[float] = None
+    test_intent_acc_std: Optional[float]  = None
     dev_slot_f1: Optional[float]     = None
     dev_intent_acc: Optional[float]  = None
     notes: str         = ""
@@ -64,6 +66,8 @@ class ExperimentTracker:
         learning_rate: float,
         test_slot_f1: float,
         test_intent_acc: float,
+        test_slot_f1_std: float    = None,
+        test_intent_acc_std: float = None,
         dev_slot_f1: float    = None,
         dev_intent_acc: float = None,
         # training curves -- pass the lists your loop already built
@@ -87,7 +91,8 @@ class ExperimentTracker:
             num_layers=num_layers if num_layers is not None else 1,
             ff_dim=ff_dim if ff_dim is not None else 20,
             dropout=dropout if dropout is not None else 0.0,
-            test_slot_f1=test_slot_f1, test_intent_acc=test_intent_acc,
+            test_slot_f1=test_slot_f1, test_slot_f1_std=test_slot_f1_std,
+            test_intent_acc=test_intent_acc, test_intent_acc_std=test_intent_acc_std,
             dev_slot_f1=dev_slot_f1, dev_intent_acc=dev_intent_acc, notes=notes,
         )
 
@@ -105,8 +110,10 @@ class ExperimentTracker:
         self._save()
         dev_f1_str  = f"{dev_slot_f1:.3f}"    if dev_slot_f1    is not None else "—"
         dev_acc_str = f"{dev_intent_acc:.3f}" if dev_intent_acc is not None else "—"
+        f1_str  = f"{test_slot_f1:.3f}"    + (f" +- {test_slot_f1_std:.3f}"    if test_slot_f1_std    is not None else "")
+        acc_str = f"{test_intent_acc:.3f}" + (f" +- {test_intent_acc_std:.3f}" if test_intent_acc_std is not None else "")
         print(f"[Tracker] '{name}'  phase={phase} ({PHASE_NAMES.get(phase,'?')})  "
-              f"test slot F1={test_slot_f1:.3f}  test intent acc={test_intent_acc:.3f}  "
+              f"test slot F1={f1_str}  test intent acc={acc_str}  "
               f"dev slot F1={dev_f1_str}  dev intent acc={dev_acc_str}")
         return exp
 
@@ -134,7 +141,8 @@ class ExperimentTracker:
     def export_csv(self):
         path = os.path.join(self.save_dir, "experiments.csv")
         fields = ["name", "phase", "status", "learning_rate", "d_model", "n_heads",
-                  "num_layers", "ff_dim", "dropout", "test_slot_f1", "test_intent_acc",
+                  "num_layers", "ff_dim", "dropout", "test_slot_f1", "test_slot_f1_std",
+                  "test_intent_acc", "test_intent_acc_std",
                   "dev_slot_f1", "dev_intent_acc", "notes", "timestamp"]
         with open(path, "w", newline="") as f:
             w = csv.DictWriter(f, fieldnames=fields)
@@ -149,7 +157,7 @@ class ExperimentTracker:
         if not self.experiments:
             print("[Tracker] No experiments logged yet.")
             return
-        col = "{:<3} {:<32} {:<5} {:<9} {:<8} {:<7} {:<7} {:<7} {:<8} {:<10} {:<10} {:<6}"
+        col = "{:<3} {:<32} {:<5} {:<9} {:<8} {:<7} {:<7} {:<7} {:<8} {:<16} {:<16} {:<6}"
         header = col.format("#", "Name", "Phase", "LR", "d_model", "heads", "layers",
                              "ff_dim", "dropout", "Slot F1", "Int Acc", "Status")
         sep = "-" * len(header)
@@ -159,7 +167,9 @@ class ExperimentTracker:
         best_score = -1
         for i, exp in enumerate(self.experiments):
             f1_str  = f"{exp.test_slot_f1:.3f}"    if exp.test_slot_f1    is not None else "—"
+            f1_str  += f"±{exp.test_slot_f1_std:.3f}"    if exp.test_slot_f1_std    is not None else ""
             acc_str = f"{exp.test_intent_acc:.3f}" if exp.test_intent_acc is not None else "—"
+            acc_str += f"±{exp.test_intent_acc_std:.3f}" if exp.test_intent_acc_std is not None else ""
             is_best = exp.score is not None and exp.score > best_score
             if is_best:
                 best_score = exp.score
@@ -184,14 +194,16 @@ class ExperimentTracker:
         if not finished:
             print("[Tracker] Nothing to plot yet."); return
 
-        names = [e.name for e in finished]
-        f1s   = [e.test_slot_f1 for e in finished]
-        accs  = [e.test_intent_acc for e in finished]
+        names    = [e.name for e in finished]
+        f1s      = [e.test_slot_f1 for e in finished]
+        accs     = [e.test_intent_acc for e in finished]
+        f1_stds  = [e.test_slot_f1_std or 0 for e in finished]
+        acc_stds = [e.test_intent_acc_std or 0 for e in finished]
         x = range(len(names))
 
         fig, ax = plt.subplots(figsize=(max(7, len(names) * 1.5), 4))
-        bars1 = ax.bar([i - 0.2 for i in x], f1s, width=0.4, label="Slot F1", color="#185FA5", zorder=2)
-        bars2 = ax.bar([i + 0.2 for i in x], accs, width=0.4, label="Intent Acc", color="#D85A30", zorder=2)
+        bars1 = ax.bar([i - 0.2 for i in x], f1s, width=0.4, yerr=f1_stds, capsize=3, label="Slot F1", color="#185FA5", zorder=2)
+        bars2 = ax.bar([i + 0.2 for i in x], accs, width=0.4, yerr=acc_stds, capsize=3, label="Intent Acc", color="#D85A30", zorder=2)
         ax.bar_label(bars1, fmt="%.2f", padding=3, fontsize=8)
         ax.bar_label(bars2, fmt="%.2f", padding=3, fontsize=8)
         ax.set_xticks(list(x)); ax.set_xticklabels(names, rotation=20, ha="right", fontsize=9)
