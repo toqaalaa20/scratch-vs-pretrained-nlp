@@ -14,7 +14,7 @@ DEVICE = 'cuda:0' # cuda:0 means we are using the GPU with id 0, if you have mul
 def load_data(path):
     '''
         input: path/to/data
-        output: json
+        output: json 
     '''
     dataset = []
     with open(path) as f:
@@ -55,7 +55,6 @@ class Lang():
             # CLS will only be used for intent classification
             vocab['cls'] = PAD_TOKEN
         return vocab
-
 
 
 class IntentsAndSlots(data.Dataset):
@@ -105,8 +104,6 @@ class IntentsAndSlots(data.Dataset):
                 tmp_seq.append(mapper[self.cls])
             res.append(tmp_seq)
         return res
-    
-
 
 def collate_fn(data):
     def merge(sequences):
@@ -144,4 +141,3 @@ def collate_fn(data):
     new_item["y_slots"] = y_slots
     new_item["slots_len"] = y_lengths
     return new_item
-

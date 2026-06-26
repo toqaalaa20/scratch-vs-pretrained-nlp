@@ -49,9 +49,7 @@ def eval_loop(data, criterion_slots, criterion_intents, model, lang):
             ref_intents.extend(gt_intents)
             hyp_intents.extend(out_intents)
             
-            # Slot inference
-            # Mask out the 'pad' class (id PAD_TOKEN) so it can never be predicted for a real token
-            slots[:, PAD_TOKEN, :] = float('-inf')
+            # Slot inference 
             output_slots = torch.argmax(slots, dim=1)
             for id_seq, seq in enumerate(output_slots):
                 length = batch['slots_len'].tolist()[id_seq] - 1 # -1, we ignore the CLS
@@ -67,13 +65,13 @@ def eval_loop(data, criterion_slots, criterion_intents, model, lang):
                 for id_el, elem in enumerate(to_decode):
                     tmp_seq.append((utterance[id_el], lang.id2slot[elem]))
                 hyp_slots.append(tmp_seq)
-    try:
+    try:            
         results = evaluate(ref_slots, hyp_slots)
     except Exception as ex:
         # Sometimes the model predicts a class that is not in REF
         print("Warning:", ex)
-        ref_s = set(tag for sent in ref_slots for _, tag in sent)
-        hyp_s = set(tag for sent in hyp_slots for _, tag in sent)
+        ref_s = set([x[1] for x in ref_slots])
+        hyp_s = set([x[1] for x in hyp_slots])
         print(hyp_s.difference(ref_s))
         results = {"total":{"f":0}}
         

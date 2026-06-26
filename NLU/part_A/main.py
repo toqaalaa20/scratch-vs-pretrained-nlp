@@ -46,8 +46,8 @@ def run_experiment(
     print(f"Model Dim: {d_model} | FF Dim: {ff_dim} | Dropout: {dropout}")
     print("=" * 50)
 
-    tmp_train_raw = load_data(os.path.join('dataset', 'ATIS', 'train.json'))
-    test_raw = load_data(os.path.join('dataset', 'ATIS', 'test.json'))
+    tmp_train_raw = load_data(os.path.join('dataset','ATIS','train.json'))
+    test_raw = load_data(os.path.join('dataset','ATIS','test.json'))
 
     intents = [x['intent'] for x in tmp_train_raw]  # We stratify on intents
     count_y = Counter(intents)
@@ -63,13 +63,15 @@ def run_experiment(
         else:
             mini_train.append(tmp_train_raw[id_y])
     # Random Stratify
-    X_train, X_dev, _, _ = train_test_split(inputs, labels, test_size=dev_portion,
-                                                        random_state=42,
-                                                        shuffle=True,
-                                                        stratify=labels)
+    X_train, X_dev, y_train, y_dev = train_test_split(inputs, labels, test_size=dev_portion, 
+                                                    random_state=42, 
+                                                    shuffle=True,
+                                                    stratify=labels)
     X_train.extend(mini_train)
     train_raw = X_train
     dev_raw = X_dev
+
+    y_test = [x['intent'] for x in test_raw]
 
     slot2id = {'pad': PAD_TOKEN}
     intent2id = {}
@@ -80,20 +82,20 @@ def run_experiment(
     for example in train_raw:
         for w in example['utterance'].split():
             if w not in w2id:
-                w2id[w] = len(w2id)
+                w2id[w] = len(w2id)   
         for slot in example['slots'].split():
             if slot not in slot2id:
                 slot2id[slot] = len(slot2id)
         if example['intent'] not in intent2id:
             intent2id[example['intent']] = len(intent2id)
-
+            
     for example in dev_raw:
         for slot in example['slots'].split():
             if slot not in slot2id:
                 slot2id[slot] = len(slot2id)
         if example['intent'] not in intent2id:
             intent2id[example['intent']] = len(intent2id)
-
+            
     for example in test_raw:
         for slot in example['slots'].split():
             if slot not in slot2id:
@@ -102,26 +104,27 @@ def run_experiment(
             intent2id[example['intent']] = len(intent2id)
 
     # No set() since we want to compute the cutoff
-    words = sum([x['utterance'].split() for x in train_raw], [])  # sum(list[list], []) -> from list of list to list
+    words = sum([x['utterance'].split() for x in train_raw], []) # sum(list[list], []) -> from list of list to list
 
-    # We do not want unk labels (slots),
+    # We do not want unk labels (slots), 
     # however this depends on the research purpose
-    corpus = train_raw + dev_raw + test_raw
+    corpus = train_raw + dev_raw + test_raw 
 
-    slots = set(sum([line['slots'].split() for line in corpus], []))
+    slots = set(sum([line['slots'].split() for line in corpus],[]))
     intents = set([line['intent'] for line in corpus])
 
     # words are only from te training set
     # labels from the whole corpus (we do not want unk labels)
     lang = Lang(words, intents, slots, cutoff=0)
+
     # Create our datasets
     train_dataset = IntentsAndSlots(train_raw, lang)
     dev_dataset = IntentsAndSlots(dev_raw, lang)
     test_dataset = IntentsAndSlots(test_raw, lang)
 
-    train_loader = DataLoader(train_dataset, batch_size=train_batch_size, collate_fn=collate_fn, shuffle=True)
-    dev_loader = DataLoader(dev_dataset, batch_size=eval_batch_size, collate_fn=collate_fn)
-    test_loader = DataLoader(test_dataset, batch_size=eval_batch_size, collate_fn=collate_fn)
+    train_loader = DataLoader(train_dataset, batch_size=128, collate_fn=collate_fn,  shuffle=True)
+    dev_loader = DataLoader(dev_dataset, batch_size=64, collate_fn=collate_fn)
+    test_loader = DataLoader(test_dataset, batch_size=64, collate_fn=collate_fn)
 
     vocab_len = len(lang.word2id)
     slots_len = len(lang.id2slot)  # pad and cls have the same id
@@ -154,9 +157,10 @@ def run_experiment(
         ).to(DEVICE)
         model.apply(init_weights)
 
+        
         optimizer = optim.AdamW(model.parameters(), lr=lr)
         criterion_slots = nn.CrossEntropyLoss(ignore_index=PAD_TOKEN)
-        criterion_intents = nn.CrossEntropyLoss()  # No pad tokens, all sequences have a single label for intent
+        criterion_intents = nn.CrossEntropyLoss() # No pad tokens, all sequences have a single label for intent
 
         patience_counter = patience
         losses_train = []
