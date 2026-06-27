@@ -284,40 +284,40 @@ def run_experiment(
 if __name__ == "__main__":
 
     # --- Step 0: Baseline LR search (architecture fixed at d_model=20, n_heads=1, num_layers=1, ff_dim=20) ---
-    run_experiment(
-        exp_name="Baseline lr=1e-3",
-        phase=0,
-        lr=1e-3,
-        d_model=20,
-        n_heads=1,
-        num_layers=1,
-        ff_dim=20,
-        dropout=0.0,
-        n_epochs=200,
-    )
-
-    # --- Step 1: Hyperparameter optimization (change d_model, n_heads, num_layers, ff_dim one at a time) ---
     # run_experiment(
-    #     exp_name="Hyperparameter Tuning, d_model=64, num_layers=2, lr=1e-3",
-    #     phase=1,
-    #     lr=1e-3,
-    #     d_model=64,
+    #     exp_name="Baseline lr=5e-1",
+    #     phase=0,
+    #     lr=5e-1,
+    #     d_model=20,
     #     n_heads=1,
-    #     num_layers=2,
+    #     num_layers=1,
     #     ff_dim=20,
     #     dropout=0.0,
     #     n_epochs=200,
     # )
 
+    # --- Step 1: Hyperparameter optimization (change d_model, n_heads, num_layers, ff_dim one at a time) ---
+    run_experiment(
+        exp_name="Dropout, d_model= 64, lr=1e-2, ff_dim=256, num_layers=2, dropout=0.2",
+        phase=2,
+        lr=1e-2,
+        d_model=64,
+        n_heads=1,
+        num_layers=2,
+        ff_dim=256,
+        dropout=0.2,
+        n_epochs=200,
+    )
+
     # --- Step 2: Dropout before the final output layers ---
     # run_experiment(
-    #     exp_name="Dropout, d_model=64,ff_dim=256,n_heads=4,num_layers=2, lr=4e-4, dropout=0.1",
+    #     exp_name="Dropout, d_model=128, lr=1e-2, dropout=0.1",
     #     phase=2,
-    #     lr=4e-4,
-    #     d_model=64,
-    #     n_heads=4,
-    #     num_layers=2,
-    #     ff_dim=256,
+    #     lr=1e-2,
+    #     d_model=128,
+    #     n_heads=1,
+    #     num_layers=1,
+    #     ff_dim=20,
     #     dropout=0.1,
     #     n_epochs=200,
     # )
