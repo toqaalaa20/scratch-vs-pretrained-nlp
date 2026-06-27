@@ -33,7 +33,7 @@ def run_experiment(
     eval_batch_size=64,
     n_epochs=10,
     patience=3,
-    runs=1,
+    runs=5,
     max_length=64,
 ):
     print("\n" + "=" * 50)
@@ -194,12 +194,12 @@ if __name__ == "__main__":
     # Pooling for intent classification is the last real token (manually
     # appended eos), since causal attention means only that position has
     # attended to the whole sentence.
-    run_experiment(
-        exp_name="GPT2 fine-tune lr=2e-5",
-        model_type="gpt2",
-        checkpoint="openai-community/gpt2",
-        lr=2e-5,
-    )
+    # run_experiment(
+    #     exp_name="GPT2 fine-tune lr=2e-5",
+    #     model_type="gpt2",
+    #     checkpoint="openai-community/gpt2",
+    #     lr=2e-5,
+    # )
 
     # Fine-tune pretrained BERT (encoder-only, bidirectional attention).
     # Pooling for intent classification is the native [CLS] token at position 0.

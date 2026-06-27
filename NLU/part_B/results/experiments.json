@@ -1,0 +1,263 @@
+[
+  {
+    "name": "GPT2 fine-tune lr=2e-5",
+    "model_type": "gpt2",
+    "checkpoint": "openai-community/gpt2",
+    "learning_rate": 2e-05,
+    "dropout": 0.1,
+    "test_slot_f1": 0.8729806338400712,
+    "test_slot_f1_std": 0.0029877348985454617,
+    "test_intent_acc": 0.9704367301231803,
+    "test_intent_acc_std": 0.0021943917068606364,
+    "dev_slot_f1": 0.9201934727340475,
+    "dev_intent_acc": 0.9911646586345381,
+    "notes": "",
+    "timestamp": "2026-06-27 17:49:06",
+    "epoch_logs": [
+      {
+        "epoch": 0,
+        "train_loss": 5.2071911232812065,
+        "dev_loss": 1.952046349644661,
+        "dev_slot_f1": 0.5491753207086132,
+        "dev_intent_acc": 0.7369477911646586
+      },
+      {
+        "epoch": 1,
+        "train_loss": 1.6115464619227817,
+        "dev_loss": 0.9959909245371819,
+        "dev_slot_f1": 0.750373692077728,
+        "dev_intent_acc": 0.8955823293172691
+      },
+      {
+        "epoch": 2,
+        "train_loss": 0.9356005881513868,
+        "dev_loss": 0.5695507526397705,
+        "dev_slot_f1": 0.8132132132132132,
+        "dev_intent_acc": 0.9558232931726908
+      },
+      {
+        "epoch": 3,
+        "train_loss": 0.6315476683633668,
+        "dev_loss": 0.4258589968085289,
+        "dev_slot_f1": 0.8461308634598147,
+        "dev_intent_acc": 0.9759036144578314
+      },
+      {
+        "epoch": 4,
+        "train_loss": 0.4911721547799451,
+        "dev_loss": 0.3286539055407047,
+        "dev_slot_f1": 0.8644470868014268,
+        "dev_intent_acc": 0.9839357429718876
+      },
+      {
+        "epoch": 5,
+        "train_loss": 0.3876257428101131,
+        "dev_loss": 0.2823201008141041,
+        "dev_slot_f1": 0.8821090047393365,
+        "dev_intent_acc": 0.9799196787148594
+      },
+      {
+        "epoch": 6,
+        "train_loss": 0.34383841987167085,
+        "dev_loss": 0.24045910127460957,
+        "dev_slot_f1": 0.9006818855618145,
+        "dev_intent_acc": 0.9899598393574297
+      },
+      {
+        "epoch": 7,
+        "train_loss": 0.2981929350112166,
+        "dev_loss": 0.2010693047195673,
+        "dev_slot_f1": 0.9137777777777777,
+        "dev_intent_acc": 0.9899598393574297
+      },
+      {
+        "epoch": 8,
+        "train_loss": 0.26410692440611977,
+        "dev_loss": 0.19150034990161657,
+        "dev_slot_f1": 0.9148936170212766,
+        "dev_intent_acc": 0.9879518072289156
+      },
+      {
+        "epoch": 9,
+        "train_loss": 0.24210411022816386,
+        "dev_loss": 0.1660018302500248,
+        "dev_slot_f1": 0.9213483146067416,
+        "dev_intent_acc": 0.9939759036144579
+      }
+    ]
+  },
+  {
+    "name": "BERT fine-tune lr=2e-5",
+    "model_type": "bert",
+    "checkpoint": "bert-base-uncased",
+    "learning_rate": 2e-05,
+    "dropout": 0.1,
+    "test_slot_f1": 0.9459975915344374,
+    "test_slot_f1_std": 0.0009782786031236725,
+    "test_intent_acc": 0.9764837625979844,
+    "test_intent_acc_std": 0.001873818648452578,
+    "dev_slot_f1": 0.9731001816331497,
+    "dev_intent_acc": 0.9911646586345382,
+    "notes": "",
+    "timestamp": "2026-06-27 18:09:35",
+    "epoch_logs": [
+      {
+        "epoch": 0,
+        "train_loss": 2.098817398292678,
+        "dev_loss": 0.7339753359556198,
+        "dev_slot_f1": 0.7777097366809553,
+        "dev_intent_acc": 0.9618473895582329
+      },
+      {
+        "epoch": 1,
+        "train_loss": 0.5834341311029025,
+        "dev_loss": 0.3752640523016453,
+        "dev_slot_f1": 0.8422928422928424,
+        "dev_intent_acc": 0.9839357429718876
+      },
+      {
+        "epoch": 2,
+        "train_loss": 0.3516486162585872,
+        "dev_loss": 0.2647986076772213,
+        "dev_slot_f1": 0.8917723385432026,
+        "dev_intent_acc": 0.9899598393574297
+      },
+      {
+        "epoch": 3,
+        "train_loss": 0.2373482430619853,
+        "dev_loss": 0.20116365049034357,
+        "dev_slot_f1": 0.9201296787503684,
+        "dev_intent_acc": 0.9919678714859438
+      },
+      {
+        "epoch": 4,
+        "train_loss": 0.1676123314670154,
+        "dev_loss": 0.1553669609129429,
+        "dev_slot_f1": 0.9372236958443856,
+        "dev_intent_acc": 0.9919678714859438
+      },
+      {
+        "epoch": 5,
+        "train_loss": 0.12667294570377896,
+        "dev_loss": 0.13497291784733534,
+        "dev_slot_f1": 0.9404866608032835,
+        "dev_intent_acc": 0.9939759036144579
+      },
+      {
+        "epoch": 6,
+        "train_loss": 0.10465818643569946,
+        "dev_loss": 0.13489163294434547,
+        "dev_slot_f1": 0.9495305164319249,
+        "dev_intent_acc": 0.9859437751004017
+      },
+      {
+        "epoch": 7,
+        "train_loss": 0.08575223362339394,
+        "dev_loss": 0.11068824678659439,
+        "dev_slot_f1": 0.9611307420494699,
+        "dev_intent_acc": 0.9919678714859438
+      },
+      {
+        "epoch": 8,
+        "train_loss": 0.07054447699338198,
+        "dev_loss": 0.1046958495862782,
+        "dev_slot_f1": 0.9673048600883654,
+        "dev_intent_acc": 0.9919678714859438
+      },
+      {
+        "epoch": 9,
+        "train_loss": 0.05900743602375899,
+        "dev_loss": 0.08900498505681753,
+        "dev_slot_f1": 0.9749188551195042,
+        "dev_intent_acc": 0.9919678714859438
+      }
+    ]
+  },
+  {
+    "name": "BERT fine-tune lr=2e-5 warmup_scheduler",
+    "model_type": "bert",
+    "checkpoint": "bert-base-uncased",
+    "learning_rate": 2e-05,
+    "dropout": 0.1,
+    "test_slot_f1": 0.9076644217810038,
+    "test_slot_f1_std": 0.0023707186633109612,
+    "test_intent_acc": 0.9735722284434492,
+    "test_intent_acc_std": 0.002513991525268067,
+    "dev_slot_f1": 0.9346966671520368,
+    "dev_intent_acc": 0.9931726907630521,
+    "notes": "",
+    "timestamp": "2026-06-27 18:32:24",
+    "epoch_logs": [
+      {
+        "epoch": 0,
+        "train_loss": 4.082042420761926,
+        "dev_loss": 1.4329244047403336,
+        "dev_slot_f1": 0.4007166318303971,
+        "dev_intent_acc": 0.8955823293172691
+      },
+      {
+        "epoch": 1,
+        "train_loss": 0.9685753856386458,
+        "dev_loss": 0.535857230424881,
+        "dev_slot_f1": 0.8100659077291792,
+        "dev_intent_acc": 0.9718875502008032
+      },
+      {
+        "epoch": 2,
+        "train_loss": 0.48929992126567023,
+        "dev_loss": 0.36177147552371025,
+        "dev_slot_f1": 0.8579916815210933,
+        "dev_intent_acc": 0.9839357429718876
+      },
+      {
+        "epoch": 3,
+        "train_loss": 0.33374972588249613,
+        "dev_loss": 0.27249181270599365,
+        "dev_slot_f1": 0.8932268559597751,
+        "dev_intent_acc": 0.9879518072289156
+      },
+      {
+        "epoch": 4,
+        "train_loss": 0.25806655160018377,
+        "dev_loss": 0.22699397057294846,
+        "dev_slot_f1": 0.9058823529411765,
+        "dev_intent_acc": 0.9899598393574297
+      },
+      {
+        "epoch": 5,
+        "train_loss": 0.21095395418150084,
+        "dev_loss": 0.19757498987019062,
+        "dev_slot_f1": 0.9184574624668825,
+        "dev_intent_acc": 0.9919678714859438
+      },
+      {
+        "epoch": 6,
+        "train_loss": 0.17753996806485312,
+        "dev_loss": 0.17973285634070635,
+        "dev_slot_f1": 0.9261981770067628,
+        "dev_intent_acc": 0.9919678714859438
+      },
+      {
+        "epoch": 7,
+        "train_loss": 0.15814313100917,
+        "dev_loss": 0.1655651219189167,
+        "dev_slot_f1": 0.9297678518953865,
+        "dev_intent_acc": 0.9899598393574297
+      },
+      {
+        "epoch": 8,
+        "train_loss": 0.14693212676793338,
+        "dev_loss": 0.16398639604449272,
+        "dev_slot_f1": 0.9312977099236641,
+        "dev_intent_acc": 0.9919678714859438
+      },
+      {
+        "epoch": 9,
+        "train_loss": 0.13961347777928626,
+        "dev_loss": 0.15992115903645754,
+        "dev_slot_f1": 0.9318448883666276,
+        "dev_intent_acc": 0.9939759036144579
+      }
+    ]
+  }
+]
