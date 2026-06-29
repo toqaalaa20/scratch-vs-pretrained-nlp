@@ -127,6 +127,9 @@ class GPT2(nn.Module):
 
         self.ln_f = nn.LayerNorm(d_model)
 
+        # dropout applied right before the final output layers (slot_out / intent_out)
+        self.out_dropout = nn.Dropout(dropout)
+
         #### These are different from the Language Modeling case of Part 1
         # slot outputs (sequence labeling): one slot label for each input token
         self.slot_out = nn.Linear(d_model, slots_size)
@@ -158,6 +161,7 @@ class GPT2(nn.Module):
         # We are also predicting a slot for CLS
         # but it will be ignored, as we have a pad token in the ground truth
         x = self.ln_f(x)
+        x = self.out_dropout(x)
         slots = self.slot_out(x)
 
         # get intent from last token (CLS)
