@@ -1,5 +1,8 @@
+import csv
+import json
 import math
 import os
+from datetime import datetime
 
 from tqdm import tqdm
 import torch
@@ -85,10 +88,37 @@ def plot_training_curves(exp_name, save_dir, sampled_epochs, losses_train, losse
     print(f"Training curves saved to: {path}")
 
 
-def print_results(exp_name, **metrics):
-    """Print a final summary of the experiment's metrics."""
+def print_results(exp_name, save_dir="LM/part_B/results", **metrics):
+    """Print a final summary of the experiment's metrics and append it to
+    save_dir/experiments.json and save_dir/experiments.csv."""
     print("\n" + "=" * 50)
     print(f"RESULTS: {exp_name}")
     for key, value in metrics.items():
         print(f"  {key}: {value:.4f}" if isinstance(value, float) else f"  {key}: {value}")
     print("=" * 50 + "\n")
+    log_experiment(exp_name, save_dir, **metrics)
+
+
+def log_experiment(exp_name, save_dir, **metrics):
+    """Append one experiment's metrics to experiments.json and rewrite experiments.csv
+    from the full history (column set grows to cover any new metric keys)."""
+    os.makedirs(save_dir, exist_ok=True)
+    record = {"name": exp_name, "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), **metrics}
+
+    json_path = os.path.join(save_dir, "experiments.json")
+    records = []
+    if os.path.exists(json_path):
+        with open(json_path) as f:
+            records = json.load(f)
+    records.append(record)
+    with open(json_path, "w") as f:
+        json.dump(records, f, indent=2)
+
+    csv_path = os.path.join(save_dir, "experiments.csv")
+    fieldnames = list(dict.fromkeys(key for r in records for key in r.keys()))
+    with open(csv_path, "w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(records)
+
+    print(f"Logged experiment to: {json_path} and {csv_path}")
