@@ -14,18 +14,17 @@ LM/
 NLU/
   part_A/   from-scratch joint intent/slot model, trained on ATIS
   part_B/   fine-tuned pretrained BERT / GPT-2 backbones, joint intent/slot
-figures/    plots generated from the experiment logs, used in report.tex
-mybib.bib   bibliography for report.tex
 ```
 
 Each `part_*` directory is self-contained:
 
 - `model.py` — model architecture
-- `functions.py` — train/eval loops
+- `functions.py` — train/eval loops and result reporting (plots, metric printing)
 - `utils.py` — data loading and preprocessing
-- `tracker.py` — experiment logging (`results/experiments.{csv,json}`, training curves, comparison plots)
-- `main.py` — entry point; defines and runs experiments
-- `results/` — logged metrics, training curves and comparison plots per experiment
+- `main.py` — entry point; defines and runs the experiment
+- `dataset/` — dataset files (not committed, see below)
+- `bin/` — best model checkpoint
+- `results/` — training curves from past hyperparameter-search runs
 
 ## Setup
 
@@ -52,10 +51,10 @@ From inside a `part_*` directory:
 python main.py
 ```
 
-`main.py` defines one or more calls to `run_experiment(...)`; edit the parameters there (or
-uncomment previous runs, kept as comments for reference) to try a different configuration.
-Each run logs its results to `results/experiments.csv` / `.json`, saves the best/last model
-checkpoint under `bin/`, and regenerates the comparison plots in `results/`.
+`main.py` calls `run_experiment(...)` with the best configuration found (earlier configurations
+explored during hyperparameter search are kept as comments for reference). Each run prints the
+final metrics, saves the best model checkpoint under `bin/`, and writes a training-curve plot to
+`results/`.
 
 ## Results summary
 

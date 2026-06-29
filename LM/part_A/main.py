@@ -1,5 +1,4 @@
-from tracker import ExperimentTracker
-from functions import eval_loop, train_loop
+from functions import eval_loop, train_loop, plot_training_curves, print_results
 import torch.nn as nn
 import torch
 import math
@@ -9,7 +8,6 @@ from torch.utils.data import DataLoader
 from transformers import AutoTokenizer
 from model import GPT2, init_weights
 from utils import PennTreeBank, collate_fn, read_file
-from tracker import ExperimentTracker
 
 import copy
 import tqdm
@@ -17,6 +15,15 @@ import os
 import time
 
 def run_experiment(exp_name, phase, lr, d_model, n_heads, num_layers, ff_dim, dropout=0.0, weight_tying=False, n_epochs=100):
+    """Train a from-scratch GPT2 language model on Penn Treebank with early stopping on dev PPL,
+    then evaluate the best checkpoint on the test set, save it to bin/, and report/plot the results.
+
+    Args:
+        exp_name: unique name used for the bin/ checkpoint dir and the results/ plot file.
+        phase: hyperparameter-search phase this run belongs to (kept for the printed header only).
+        lr, d_model, n_heads, num_layers, ff_dim, dropout, weight_tying: model/optimizer hyperparameters.
+        n_epochs: max epochs; training stops early after 3 epochs without dev PPL improvement.
+    """
     # --- Reporting: Start Header ---
     print("\n" + "="*50)
     print(f"STARTING EXPERIMENT: {exp_name}")
@@ -119,42 +126,23 @@ def run_experiment(exp_name, phase, lr, d_model, n_heads, num_layers, ff_dim, dr
     # Saving
     os.makedirs(f"bin/{exp_name}", exist_ok=True)
     torch.save(best_model.state_dict(), f'bin/{exp_name}/best_model.pt')
-    torch.save(model.state_dict(), f'bin/{exp_name}/last_model.pt')
 
-    # Tracker logging
-    tracker = ExperimentTracker("LM/part_A/results")
-    tracker.log(
-        name=exp_name,
-        phase=phase,
-        learning_rate=lr,
+    # Results
+    print_results(
+        exp_name,
+        best_dev_ppl=best_ppl,
+        best_train_ppl=best_train_ppl,
         test_ppl=final_ppl,
-        dev_ppl=best_ppl,
-        train_ppl=best_train_ppl,
-        sampled_epochs=sampled_epochs,
-        losses_train=losses_train,
-        losses_dev=losses_dev,
-        ppls_train=ppls_train,
-        ppls_dev=ppls_dev,
-        d_model=d_model,
-        n_heads=n_heads,
-        num_layers=num_layers,
-        ff_dim=ff_dim,
-        dropout=dropout,
-        weight_tying=weight_tying
     )
-
-    # --- Reporting: Final Results Block ---
-    print("\n" + "="*50)
-    print(f"EXPERIMENT COMPLETE: {exp_name}")
-    print(f"Best Dev PPL:  {best_ppl:.4f}")
-    print(f"Final Test PPL: {final_ppl:.4f}")
-    print(f"Models saved in: bin/{exp_name}/")
-    print("="*50 + "\n")
-
-    tracker.summary()      
-    tracker.plot_curves(tracker.experiments[-1]) 
-    tracker.plot_ppl()                            
-    tracker.export_csv()
+    plot_training_curves(
+        exp_name,
+        "LM/part_A/results",
+        sampled_epochs,
+        losses_train,
+        losses_dev,
+        ppls_train,
+        ppls_dev,
+    )
 
 if __name__ == "__main__":
 

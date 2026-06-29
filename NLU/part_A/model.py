@@ -7,6 +7,7 @@ import torch.nn.functional as F
 
 
 def init_weights(mat):
+    """Initialize every nn.Linear submodule with small uniform weights and a constant bias."""
     for m in mat.modules():
         if type(m) in [nn.Linear]:
             torch.nn.init.uniform_(m.weight, -0.01, 0.01)
@@ -15,6 +16,8 @@ def init_weights(mat):
 
 
 class MultiHeadAttention(nn.Module):
+    """Causal multi-head self-attention (the masking is applied by the caller via `mask`)."""
+
     def __init__(self, d_model, n_heads, dropout=0.1):
         super().__init__()
         assert d_model % n_heads == 0
@@ -59,8 +62,10 @@ class MultiHeadAttention(nn.Module):
         y = self.out_proj(y)
 
         return y
-    
+
 class FeedForward(nn.Module):
+    """Position-wise two-layer MLP (Linear -> GELU -> Linear) applied independently to each token."""
+
     def __init__(self, d_model, hidden_dim, dropout=0.1):
         super().__init__()
         self.net = nn.Sequential(
@@ -74,6 +79,8 @@ class FeedForward(nn.Module):
         return self.net(x)
     
 class TransformerBlock(nn.Module):
+    """One decoder block: pre-LayerNorm self-attention + pre-LayerNorm feed-forward, both with residual connections."""
+
     def __init__(self, d_model, n_heads, ff_dim, dropout=0.1):
         super().__init__()
         self.ln1 = nn.LayerNorm(d_model)
@@ -89,11 +96,14 @@ class TransformerBlock(nn.Module):
         return x
     
 class GPT2(nn.Module):
+    """From-scratch GPT-2-style decoder-only backbone with two task heads on top: a token-level
+    slot tagger and a sequence-level intent classifier (joint intent classification + slot filling)."""
+
     def __init__(
         self,
-        vocab_size, 
-        slots_size, 
-        n_intents, 
+        vocab_size,
+        slots_size,
+        n_intents,
         # GPT2 default hyperparameters
         pos_emb_size=1024,
         d_model=768,
@@ -130,6 +140,8 @@ class GPT2(nn.Module):
         self.register_buffer("mask", mask)
     
     def forward(self, idx, seq_lens):
+        """idx: (B, L) token ids, seq_lens: (B,) true length of each sequence (incl. the
+        appended CLS token). Returns (slot_logits (B, L, slots_size), intent_logits (B, n_intents))."""
         B, L = idx.shape # batch size, sequence length
         # positional embedding at most for position self.pos_emb_size
         # longer sequences cannot be processed (the model never learned positional embeddings for positions greater than self.pos_emb_size)

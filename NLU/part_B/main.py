@@ -14,7 +14,6 @@ from torch.utils.data import DataLoader
 
 from utils import load_atis_splits, build_label_vocabs, JointATISDataset, collate_fn, IGNORE_INDEX
 from model import build_model, load_tokenizer
-from tracker import ExperimentTracker
 
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -36,6 +35,21 @@ def run_experiment(
     runs=5,
     max_length=64,
 ):
+    """Fine-tune a pretrained encoder/decoder backbone (BERT or GPT2) with a joint intent/slot
+    head on ATIS, repeated `runs` times (the test metrics reported are mean +- std across runs;
+    only the last run's model is saved/plotted). Each run trains with early stopping on dev slot
+    F1, then evaluates on the test set.
+
+    Args:
+        exp_name: unique name used for the bin/ checkpoint dir and the results/ plot file.
+        model_type: "bert" or "gpt2" (selects the pooling strategy in model.build_model).
+        checkpoint: HuggingFace checkpoint name to load the backbone/tokenizer from.
+        lr, dropout, train_batch_size, eval_batch_size, max_length: optimizer/data hyperparameters.
+        dev_portion: fraction of the training set held out (stratified by intent) for early stopping.
+        n_epochs: max epochs per run; training stops early after `patience` epochs without
+            dev slot F1 improvement.
+        runs: number of independent training runs (different random init) to average metrics over.
+    """
     print("\n" + "=" * 50)
     print(f"STARTING EXPERIMENT: {exp_name}")
     print(f"Model: {model_type} ({checkpoint}) | LR: {lr} | Dropout: {dropout}")
@@ -66,7 +80,6 @@ def run_experiment(
     test_f1s, test_accs, dev_f1s, dev_accs = [], [], [], []
     last_run_curves = None
     last_best_model = None
-    last_model = None
 
     for run in range(runs):
         print(f"\n--- Run {run + 1}/{runs} ---")
@@ -134,7 +147,6 @@ def run_experiment(
             dev_intent_accs=dev_intent_accs,
         )
         last_best_model = best_model
-        last_model = model
 
     print("\n" + "-" * 30)
     print("Finalizing Experiment...")
@@ -149,43 +161,29 @@ def run_experiment(
     print(f"Slot F1: {test_f1_mean:.3f} +- {test_f1_std:.3f}")
     print(f"Intent Acc: {test_acc_mean:.3f} +- {test_acc_std:.3f}")
 
-    # Saving (models from the last run)
+    # Saving (best model from the last run)
     os.makedirs(f"bin/{exp_name}", exist_ok=True)
     torch.save(last_best_model.state_dict(), f"bin/{exp_name}/best_model.pt")
-    torch.save(last_model.state_dict(), f"bin/{exp_name}/last_model.pt")
 
-    # Tracker logging
-    tracker = ExperimentTracker("NLU/part_B/results")
-    tracker.log(
-        name=exp_name,
-        model_type=model_type,
-        checkpoint=checkpoint,
-        learning_rate=lr,
-        dropout=dropout,
+    # Results
+    print_results(
+        exp_name,
+        dev_slot_f1=dev_f1_mean,
+        dev_intent_acc=dev_acc_mean,
         test_slot_f1=test_f1_mean,
         test_slot_f1_std=test_f1_std,
         test_intent_acc=test_acc_mean,
         test_intent_acc_std=test_acc_std,
-        dev_slot_f1=dev_f1_mean,
-        dev_intent_acc=dev_acc_mean,
-        sampled_epochs=last_run_curves['sampled_epochs'],
-        losses_train=last_run_curves['losses_train'],
-        losses_dev=last_run_curves['losses_dev'],
-        dev_slot_f1s=last_run_curves['dev_slot_f1s'],
-        dev_intent_accs=last_run_curves['dev_intent_accs'],
     )
-
-    print("\n" + "=" * 50)
-    print(f"EXPERIMENT COMPLETE: {exp_name}")
-    print(f"Dev Slot F1 (avg): {dev_f1_mean:.4f}  |  Dev Intent Acc (avg): {dev_acc_mean:.4f}")
-    print(f"Test Slot F1: {test_f1_mean:.4f} +- {test_f1_std:.4f}  |  Test Intent Acc: {test_acc_mean:.4f} +- {test_acc_std:.4f}")
-    print(f"Models saved in: bin/{exp_name}/")
-    print("=" * 50 + "\n")
-
-    tracker.summary()
-    tracker.plot_curves(tracker.experiments[-1])
-    tracker.plot_metrics()
-    tracker.export_csv()
+    plot_training_curves(
+        exp_name,
+        "NLU/part_B/results",
+        last_run_curves['sampled_epochs'],
+        last_run_curves['losses_train'],
+        last_run_curves['losses_dev'],
+        last_run_curves['dev_slot_f1s'],
+        last_run_curves['dev_intent_accs'],
+    )
 
 
 if __name__ == "__main__":

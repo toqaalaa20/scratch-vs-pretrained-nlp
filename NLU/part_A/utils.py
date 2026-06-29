@@ -3,7 +3,6 @@ import json
 from collections import Counter
 import torch
 import torch.utils.data as data
-from torch.utils.data import DataLoader
 
 
 
@@ -14,7 +13,7 @@ DEVICE = 'cuda:0' # cuda:0 means we are using the GPU with id 0, if you have mul
 def load_data(path):
     '''
         input: path/to/data
-        output: json 
+        output: json
     '''
     dataset = []
     with open(path) as f:
@@ -23,6 +22,8 @@ def load_data(path):
 
 
 class Lang():
+    """Builds the word/slot/intent <-> id vocabularies used to numericalize the ATIS dataset."""
+
     def __init__(self, words, intents, slots, cutoff=0, cls=True):
         self.word2id = self.w2id(words, cutoff=cutoff, unk=True, cls=cls)
         self.slot2id = self.lab2id(slots, cls=cls)
@@ -33,6 +34,7 @@ class Lang():
         self.id2intent = {v:k for k, v in self.intent2id.items()}
         
     def w2id(self, elements, cutoff=None, unk=True, cls=True):
+        """Build a word->id vocabulary, keeping only words occurring more than `cutoff` times."""
         vocab = {'pad': PAD_TOKEN}
         if unk:
             vocab['unk'] = len(vocab)
@@ -45,6 +47,7 @@ class Lang():
         return vocab
     
     def lab2id(self, elements, pad=True, cls=True):
+        """Build a label->id vocabulary (used for both slots and intents)."""
         vocab = {}
         if pad:
             vocab['pad'] = PAD_TOKEN
@@ -58,6 +61,8 @@ class Lang():
 
 
 class IntentsAndSlots(data.Dataset):
+    """ATIS dataset: each example is an utterance with a slot label per token and one intent label."""
+
     # Mandatory methods are __init__, __len__ and __getitem__
     def __init__(self, dataset, lang, unk='unk', cls='cls', add_cls=True):
         self.utterances = []
@@ -87,11 +92,13 @@ class IntentsAndSlots(data.Dataset):
         return sample
     
     # Auxiliary methods
-    
+
     def mapping_lab(self, data, mapper):
+        """Map a list of labels to ids, falling back to `unk` for labels unseen in `mapper`."""
         return [mapper[x] if x in mapper else mapper[self.unk] for x in data]
-    
+
     def mapping_seq(self, data, mapper): # Map sequences to number
+        """Map a list of whitespace-tokenized sequences to lists of ids, appending the CLS id."""
         res = []
         for seq in data:
             tmp_seq = []
@@ -106,6 +113,8 @@ class IntentsAndSlots(data.Dataset):
         return res
 
 def collate_fn(data):
+    """Pad a batch of {utterance, slots, intent} samples to the batch's max length and stack
+    them into tensors on DEVICE, ready for the model."""
     def merge(sequences):
         '''
         merge from batch * sent_len to batch * max_len 

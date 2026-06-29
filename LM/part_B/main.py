@@ -9,13 +9,22 @@ import torch.optim as optim
 from torch.utils.data import DataLoader
 from transformers import AutoTokenizer
 
-from functions import eval_loop, train_loop
+from functions import eval_loop, train_loop, plot_training_curves, print_results
 from model import GPT2_LoRA, LoRALinear, reset_lora_parameters
-from tracker import ExperimentTracker
 from utils import PennTreeBank, collate_fn, param_stats, read_file
 
 
 def run_experiment(exp_name, rank, alpha, lr, batch_size=8, n_epochs=100, patience_max=3, max_grad_norm=5.0):
+    """Fine-tune a pretrained GPT2 with LoRA adapters on the Q/K/V projections (the backbone
+    stays frozen) on Penn Treebank, with early stopping on dev PPL. Evaluates the best checkpoint
+    on the test set, saves it to bin/, and reports/plots the results.
+
+    Args:
+        exp_name: unique name used for the bin/ checkpoint dir and the results/ plot file.
+        rank, alpha: LoRA adapter rank and scaling factor (scaling = alpha / rank).
+        lr, batch_size, n_epochs, max_grad_norm: optimizer/training hyperparameters.
+        patience_max: epochs without dev PPL improvement before early stopping.
+    """
     print("\n" + "=" * 50)
     print(f"STARTING EXPERIMENT: {exp_name}")
     print(f"Rank: {rank} | Alpha: {alpha} | LR: {lr}")
@@ -108,33 +117,21 @@ def run_experiment(exp_name, rank, alpha, lr, batch_size=8, n_epochs=100, patien
     os.makedirs(f"bin/{exp_name}", exist_ok=True)
     torch.save(best_model.state_dict(), f"bin/{exp_name}/best_model.pt")
 
-    tracker = ExperimentTracker("LM/part_B/results")
-    tracker.log(
-        name=exp_name,
-        rank=rank,
-        alpha=alpha,
-        learning_rate=lr,
+    print_results(
+        exp_name,
+        best_dev_ppl=best_ppl,
+        best_train_ppl=best_train_ppl,
         test_ppl=final_ppl,
-        dev_ppl=best_ppl,
-        train_ppl=best_train_ppl,
-        sampled_epochs=sampled_epochs,
-        losses_train=losses_train,
-        losses_dev=losses_dev,
-        ppls_train=ppls_train,
-        ppls_dev=ppls_dev,
     )
-
-    print("\n" + "=" * 50)
-    print(f"EXPERIMENT COMPLETE: {exp_name}")
-    print(f"Best Dev PPL:  {best_ppl:.4f}")
-    print(f"Final Test PPL: {final_ppl:.4f}")
-    print(f"Model saved in: bin/{exp_name}/")
-    print("=" * 50 + "\n")
-
-    tracker.summary()
-    tracker.plot_curves(tracker.experiments[-1])
-    tracker.plot_ppl()
-    tracker.export_csv()
+    plot_training_curves(
+        exp_name,
+        "LM/part_B/results",
+        sampled_epochs,
+        losses_train,
+        losses_dev,
+        ppls_train,
+        ppls_dev,
+    )
 
 
 if __name__ == "__main__":

@@ -15,7 +15,6 @@ import torch.optim as optim
 from model import GPT2, init_weights
 from tqdm import tqdm
 import torch.nn as nn
-from tracker import ExperimentTracker
 
 DEVICE = "cuda:0" if torch.cuda.is_available() else "cpu"
 
@@ -40,6 +39,19 @@ def run_experiment(
     patience=3,
     runs=5,
 ):
+    """Train a from-scratch joint intent/slot GPT2 model on ATIS, repeated `runs` times (the
+    test metrics reported are mean +- std across runs; only the last run's model is saved/plotted).
+    Each run trains with early stopping on dev slot F1, then evaluates on the test set.
+
+    Args:
+        exp_name: unique name used for the bin/ checkpoint dir and the results/ plot file.
+        phase: hyperparameter-search phase this run belongs to (kept for the printed header only).
+        lr, d_model, n_heads, num_layers, ff_dim, dropout, pos_emb_size: model/optimizer hyperparameters.
+        dev_portion: fraction of the training set held out (stratified by intent) for early stopping.
+        n_epochs: max epochs per run; training stops early after `patience` epochs without
+            dev slot F1 improvement.
+        runs: number of independent training runs (different random init) to average metrics over.
+    """
     print("\n" + "=" * 50)
     print(f"STARTING EXPERIMENT: {exp_name}")
     print(f"Phase: {phase} | LR: {lr} | Layers: {num_layers} | Heads: {n_heads}")
@@ -62,46 +74,14 @@ def run_experiment(
             labels.append(y)
         else:
             mini_train.append(tmp_train_raw[id_y])
-    # Random Stratify
-    X_train, X_dev, y_train, y_dev = train_test_split(inputs, labels, test_size=dev_portion, 
-                                                    random_state=42, 
+    # Random Stratify (the resulting label arrays aren't needed beyond stratification)
+    X_train, X_dev, _, _ = train_test_split(inputs, labels, test_size=dev_portion,
+                                                    random_state=42,
                                                     shuffle=True,
                                                     stratify=labels)
     X_train.extend(mini_train)
     train_raw = X_train
     dev_raw = X_dev
-
-    y_test = [x['intent'] for x in test_raw]
-
-    slot2id = {'pad': PAD_TOKEN}
-    intent2id = {}
-    # Map the words only from the train set
-    # Map slot and intent labels of train, dev and test set. 'unk' is not needed.
-    w2id = {'pad': PAD_TOKEN, 'unk': 1}
-
-    for example in train_raw:
-        for w in example['utterance'].split():
-            if w not in w2id:
-                w2id[w] = len(w2id)   
-        for slot in example['slots'].split():
-            if slot not in slot2id:
-                slot2id[slot] = len(slot2id)
-        if example['intent'] not in intent2id:
-            intent2id[example['intent']] = len(intent2id)
-            
-    for example in dev_raw:
-        for slot in example['slots'].split():
-            if slot not in slot2id:
-                slot2id[slot] = len(slot2id)
-        if example['intent'] not in intent2id:
-            intent2id[example['intent']] = len(intent2id)
-            
-    for example in test_raw:
-        for slot in example['slots'].split():
-            if slot not in slot2id:
-                slot2id[slot] = len(slot2id)
-        if example['intent'] not in intent2id:
-            intent2id[example['intent']] = len(intent2id)
 
     # No set() since we want to compute the cutoff
     words = sum([x['utterance'].split() for x in train_raw], []) # sum(list[list], []) -> from list of list to list
@@ -139,7 +119,6 @@ def run_experiment(
     # Curves from the last run are kept for plotting (representative of the others)
     last_run_curves = None
     last_best_model = None
-    last_model = None
 
     for run in range(runs):
         print(f"\n--- Run {run + 1}/{runs} ---")
@@ -224,7 +203,6 @@ def run_experiment(
             dev_intent_accs=dev_intent_accs,
         )
         last_best_model = best_model
-        last_model = model
 
     print("\n" + "-" * 30)
     print("Finalizing Experiment...")
@@ -239,46 +217,29 @@ def run_experiment(
     print(f"Slot F1: {test_f1_mean:.3f} +- {test_f1_std:.3f}")
     print(f"Intent Acc: {test_acc_mean:.3f} +- {test_acc_std:.3f}")
 
-    # Saving (models from the last run)
+    # Saving (best model from the last run)
     os.makedirs(f"bin/{exp_name}", exist_ok=True)
     torch.save(last_best_model.state_dict(), f"bin/{exp_name}/best_model.pt")
-    torch.save(last_model.state_dict(), f"bin/{exp_name}/last_model.pt")
 
-    # Tracker logging
-    tracker = ExperimentTracker("NLU/part_A/results")
-    tracker.log(
-        name=exp_name,
-        phase=phase,
-        learning_rate=lr,
+    # Results
+    print_results(
+        exp_name,
+        dev_slot_f1=dev_f1_mean,
+        dev_intent_acc=dev_acc_mean,
         test_slot_f1=test_f1_mean,
         test_slot_f1_std=test_f1_std,
         test_intent_acc=test_acc_mean,
         test_intent_acc_std=test_acc_std,
-        dev_slot_f1=dev_f1_mean,
-        dev_intent_acc=dev_acc_mean,
-        sampled_epochs=last_run_curves['sampled_epochs'],
-        losses_train=last_run_curves['losses_train'],
-        losses_dev=last_run_curves['losses_dev'],
-        dev_slot_f1s=last_run_curves['dev_slot_f1s'],
-        dev_intent_accs=last_run_curves['dev_intent_accs'],
-        d_model=d_model,
-        n_heads=n_heads,
-        num_layers=num_layers,
-        ff_dim=ff_dim,
-        dropout=dropout,
     )
-
-    print("\n" + "=" * 50)
-    print(f"EXPERIMENT COMPLETE: {exp_name}")
-    print(f"Dev Slot F1 (avg): {dev_f1_mean:.4f}  |  Dev Intent Acc (avg): {dev_acc_mean:.4f}")
-    print(f"Test Slot F1: {test_f1_mean:.4f} +- {test_f1_std:.4f}  |  Test Intent Acc: {test_acc_mean:.4f} +- {test_acc_std:.4f}")
-    print(f"Models saved in: bin/{exp_name}/")
-    print("=" * 50 + "\n")
-
-    tracker.summary()
-    tracker.plot_curves(tracker.experiments[-1])
-    tracker.plot_metrics()
-    tracker.export_csv()
+    plot_training_curves(
+        exp_name,
+        "NLU/part_A/results",
+        last_run_curves['sampled_epochs'],
+        last_run_curves['losses_train'],
+        last_run_curves['losses_dev'],
+        last_run_curves['dev_slot_f1s'],
+        last_run_curves['dev_intent_accs'],
+    )
 
 
 if __name__ == "__main__":
@@ -296,28 +257,15 @@ if __name__ == "__main__":
     #     n_epochs=200,
     # )
 
-    # --- Step 1: Hyperparameter optimization (change d_model, n_heads, num_layers, ff_dim one at a time) ---
+    # --- Step 2: Dropout before the final output layers (best config: test Slot F1 0.890, Intent Acc 0.922) ---
     run_experiment(
-        exp_name="Dropout, d_model= 64, lr=1e-2, ff_dim=256, num_layers=2, dropout=0.2",
+        exp_name="Dropout, d_model=64, lr=1e-2, dropout=0.1",
         phase=2,
         lr=1e-2,
         d_model=64,
         n_heads=1,
-        num_layers=2,
-        ff_dim=256,
-        dropout=0.2,
+        num_layers=1,
+        ff_dim=20,
+        dropout=0.1,
         n_epochs=200,
     )
-
-    # --- Step 2: Dropout before the final output layers ---
-    # run_experiment(
-    #     exp_name="Dropout, d_model=128, lr=1e-2, dropout=0.1",
-    #     phase=2,
-    #     lr=1e-2,
-    #     d_model=128,
-    #     n_heads=1,
-    #     num_layers=1,
-    #     ff_dim=20,
-    #     dropout=0.1,
-    #     n_epochs=200,
-    # )
